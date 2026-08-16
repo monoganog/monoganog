@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./hero.svg" alt="monoganog" width="100%">
+  <img src="./hero-full.svg" alt="monoganog" width="100%">
 </p>
 
 ---
