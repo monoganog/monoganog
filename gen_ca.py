@@ -165,6 +165,7 @@ GRADIENTS = {
 
 
 def build_svg(frames, cols, stops, cycle, mode, gradient="h",
+              fit_width=True,
               font_size=14, char_w=8.4, line_h=14, pad=6):
     rows = len(frames[0])
     w = round(cols * char_w, 2)
@@ -182,23 +183,27 @@ def build_svg(frames, cols, stops, cycle, mode, gradient="h",
         f'x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">{grad}</linearGradient></defs>',
         "<style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"
         f'"DejaVu Sans Mono",monospace;font-size:{font_size}px;'
-        "fill:url(#g);white-space:pre}</style>",
+        "fill:url(#g);white-space:pre;text-rendering:optimizeSpeed}"
+        "</style>",
     ]
+
+    tl = (f' textLength="{w}" lengthAdjust="spacing"' if fit_width else "")
 
     def row_tag(i, line, extra=""):
         y = round(pad + (i + 1) * line_h - line_h * 0.22, 2)
-        return (f'<text x="0" y="{y}" textLength="{w}" lengthAdjust="spacing" '
+        return (f'<text x="0" y="{y}"{tl} '
                 f'xml:space="preserve"{extra}>{esc(line)}</text>')
 
     if mode == "frames" and len(frames) > 1:
         n = len(frames)
         kt = ";".join(f"{i/n:.4f}" for i in range(n))
         for fi, lines in enumerate(frames):
-            vals = ";".join("1" if j == fi else "0" for j in range(n))
-            out.append('<g opacity="0">')
+            vals = ";".join("inline" if j == fi else "none"
+                            for j in range(n))
+            out.append('<g display="none">')
             for i, line in enumerate(lines):
                 out.append(row_tag(i, line))
-            out.append(f'<animate attributeName="opacity" values="{vals}" '
+            out.append(f'<animate attributeName="display" values="{vals}" '
                        f'keyTimes="{kt}" calcMode="discrete" dur="{cycle}s" '
                        f'repeatCount="indefinite"/></g>')
     elif mode == "cascade":
@@ -257,6 +262,8 @@ def main():
     p.add_argument("--gradient", default="h", choices=list(GRADIENTS),
                    help="h, v, diag (top-left to bottom-right), "
                         "diag-up, h-rev")
+    p.add_argument("--no-fit-width", action="store_true",
+                   help="drop textLength; much faster to render")
     p.add_argument("--out", default="hero.svg")
     a = p.parse_args()
 
@@ -313,7 +320,8 @@ def main():
     frames = [apply_mask(fr, mask, outline, a.text_mode, a.ramp,
                          not a.no_halo) for fr in frames]
 
-    svg = build_svg(frames, a.cols, a.colors, a.cycle, a.mode, a.gradient)
+    svg = build_svg(frames, a.cols, a.colors, a.cycle, a.mode, a.gradient,
+                    not a.no_fit_width)
     with open(a.out, "w") as f:
         f.write(svg)
     print(f"{a.out}  {label}  {a.cols}x{a.rows}  "
